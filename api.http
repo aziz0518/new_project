@@ -1,0 +1,122 @@
+### 1. Ro'yxatdan o'tish
+POST http://127.0.0.1:8000/api/register/
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "email": "admin@example.com",
+  "password": "admin123"
+}
+
+###
+
+### 2. Login (JWT access va refresh token olish)
+POST http://127.0.0.1:8000/api/token/
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+###
+
+# Access tokenni bu yerga joylashtiring
+@token = Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1...
+
+###
+
+### 3. Muallif qo‘shish (token kerak)
+POST http://127.0.0.1:8000/api/authors/
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+  "first_name": "Abdulla",
+  "last_name": "Qodiriy",
+  "birth_date": "1894-04-10"
+}
+
+###
+
+### 4. Mualliflar ro‘yxati (ochiq)
+GET http://127.0.0.1:8000/api/authors/
+Accept: application/json
+
+###
+
+### 5. Kitob qo‘shish (token kerak)
+POST http://127.0.0.1:8000/api/books/
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+  "title": "O‘tgan kunlar",
+  "description": "Tarixiy roman",
+  "publication_date": "1926-05-01",
+  "author": 1
+}
+
+###
+
+### 6. Kitoblar ro‘yxati (ochiq)
+GET http://127.0.0.1:8000/api/books/
+Accept: application/json
+
+###
+
+### 7. Bitta kitobni ko‘rish (ID bo‘yicha)
+GET http://127.0.0.1:8000/api/books/1/
+Accept: application/json
+
+###
+
+### 8. Kitobni tahrirlash (ID bo‘yicha, token kerak)
+PUT http://127.0.0.1:8000/api/books/1/
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+  "title": "Yangi nom",
+  "description": "Yangi izoh",
+  "publication_date": "1922-01-01",
+  "author": 1
+}
+
+###
+
+### 9. Kitobni o‘chirish (token kerak)
+DELETE http://127.0.0.1:8000/api/books/1/
+Authorization: {{token}}
+
+### 10. Muallifni tahrirlash (ID bo‘yicha, token kerak)
+PUT http://127.0.0.1:8000/api/authors/1/
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+  "first_name": "Abdulla Qodiriy",
+  "last_name": "Yangi familiya",
+  "birth_date": "1894-04-10"
+}
+
+### 11. Muallifni o‘chirish (ID bo‘yicha, token kerak)
+DELETE http://127.0.0.1:8000/api/authors/1/
+Authorization: {{token}}
+
+
+### 12. Token yangilash (refresh token orqali access token olish)
+POST http://127.0.0.1:8000/api/token/refresh/
+Content-Type: application/json
+
+{
+  "refresh": "<refresh_token_here>"
+}
+
+### 13. Kitoblarni author ID bo‘yicha filterlash
+GET http://127.0.0.1:8000/api/books/?author=1
+Accept: application/json
+
+### 14. Kitoblarni nomi bo‘yicha qidirish
+GET http://127.0.0.1:8000/api/books/?search=O‘tgan
+Accept: application/json
