@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+.pip-wheel-metadata/
+
+# Django stuff
+*.log
+db.sqlite3
+media/
+staticfiles/
+local_settings.py
+
+# Secret files
+.env
+.env.*
+
+# IDEs and editors
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Pycharm
+*.iml
+*.ipr
+*.iws
+
+# Migrations (optional: faqat boshlang‘ich davrda)
+**/migrations/*.pyc
+**/migrations/__pycache__/
+# Eslatma: Agar barcha migration fayllarni gitga qo‘shmoqchi bo‘lsangiz, bu qatorni o‘chirib tashlang
+
+# Node.js (agar frontend bilan bog‘langan bo‘lsa)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
