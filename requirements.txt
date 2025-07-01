@@ -26,3 +26,4 @@ sqlparse==0.5.3
 tablib==3.8.0
 tzdata==2025.2
 urllib3==2.5.0
+psycopg2-binary==2.9.7
