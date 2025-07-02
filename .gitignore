@@ -48,3 +48,10 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# .env
+POSTGRES_DB=my_database
+POSTGRES_USER=my_user
+POSTGRES_PASSWORD=my_password
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
