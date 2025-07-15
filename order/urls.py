@@ -5,8 +5,12 @@ urlpatterns = [
     path('api/report/user-order-summary/', UserOrderSummaryView.as_view()),
     path('api/report/order-product-stats/', OrderProductStatsView.as_view()),
     path('api/report/order-analysis/', OrderAnalysisView.as_view()),
+    path('report/user-order-summary/', UserOrderSummaryView.as_view()),
+    path('report/order-product-stats/', OrderProductStatsView.as_view()),
+    path('report/order-analysis/', OrderAnalysisView.as_view()),
 ]
 
-
  
+
+
 
