@@ -5,31 +5,25 @@ from django.db.models import (
     Count, Sum, F, Subquery, OuterRef, Window, Max, Min, Avg,
     Q, Exists, Case, When, Value, IntegerField, CharField, Prefetch
 )
-
-
-from django.db.models.expressions import  With, RawSQL
 from django.db.models.functions import (
     Rank, RowNumber, TruncMonth, TruncDate
 )
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import User, Order, Product, OrderItem
-from django.db.models import With
-
-
+from order.models import User, Order, Product, OrderProduct
 
 
 class UserOrderSummaryView(APIView):
     def get(self, request):
         order_count = Count('order', distinct=True)
-        total_spent = Sum(F('order__orderitem__product__price') * F('order__orderitem__quantity'))
-        latest_order_subquery = Order.objects.filter(user=OuterRef('pk')).order_by('-created_at').values('created_at')[:1]
+        total_spent = Sum(F('order__orderproduct__product__price') * F('order__orderproduct__quantity'))
+        latest_order_subquery = Order.objects.filter(user=OuterRef('pk')).order_by('-ordered_at').values('ordered_at')[:1]
 
         last_orders = (
             Order.objects
-            .annotate(row_number=Window(expression=RowNumber(), partition_by=[F('user')], order_by=F('created_at').desc()))
+            .annotate(row_number=Window(expression=RowNumber(), partition_by=[F('user')], order_by=F('ordered_at').desc()))
             .filter(row_number__lte=3)
-            .values('id', 'user_id', 'created_at')
+            .values('id', 'user_id', 'ordered_at')
         )
 
         user_with_rank = (
@@ -52,8 +46,8 @@ class UserOrderSummaryView(APIView):
         user_orders = (
             Order.objects
             .select_related('user')
-            .values('user__id', 'user__username', 'id', 'created_at')
-            .order_by('user__id', '-created_at')
+            .values('user__id', 'user__username', 'id', 'ordered_at')
+            .order_by('user__id', '-ordered_at')
         )
 
         return Response({
@@ -70,7 +64,7 @@ class OrderProductStatsView(APIView):
             Order.objects
             .select_related('user')
             .annotate(
-                total_price=Sum(F('orderitem__product__price') * F('orderitem__quantity'))
+                total_price=Sum(F('orderproduct__product__price') * F('orderproduct__quantity'))
             )
             .values('id', 'user__username', 'total_price')
         )
@@ -78,7 +72,7 @@ class OrderProductStatsView(APIView):
         most_ordered_products = (
             Product.objects
             .annotate(
-                total_quantity=Sum('orderitem__quantity')
+                total_quantity=Sum('orderproduct__quantity')
             )
             .order_by('-total_quantity')
             .values('id', 'name', 'total_quantity')[:5]
@@ -86,14 +80,14 @@ class OrderProductStatsView(APIView):
 
         daily_orders = (
             Order.objects
-            .annotate(order_date=TruncDate('created_at'))
+            .annotate(order_date=TruncDate('ordered_at'))
             .values('order_date')
             .annotate(count=Count('id'))
             .order_by('order_date')
         )
 
         total_ordered_products = (
-            OrderItem.objects.aggregate(total=Sum('quantity'))
+            OrderProduct.objects.aggregate(total=Sum('quantity'))
         )
 
         product_inventory_value = (
@@ -105,15 +99,15 @@ class OrderProductStatsView(APIView):
         order_price_range = (
             Order.objects
             .annotate(
-                max_price=Max('orderitem__product__price'),
-                min_price=Min('orderitem__product__price')
+                max_price=Max('orderproduct__product__price'),
+                min_price=Min('orderproduct__product__price')
             )
             .values('id', 'user__username', 'max_price', 'min_price')
         )
 
         product_order_count = (
             Product.objects
-            .annotate(order_count=Count('orderitem__order', distinct=True))
+            .annotate(order_count=Count('orderproduct__order', distinct=True))
             .values('id', 'name', 'order_count')
         )
 
@@ -124,7 +118,7 @@ class OrderProductStatsView(APIView):
         )
 
         expensive_products_per_order = (
-            OrderItem.objects
+            OrderProduct.objects
             .select_related('order', 'product')
             .values('order_id', 'order__user__username')
             .annotate(
@@ -159,7 +153,7 @@ class OrderAnalysisView(APIView):
         ).filter(expensive=True).values('id', 'name', 'price')
 
         cheapest_product = Product.objects.order_by('price').first()
-        orders_with_cheapest_product = Order.objects.filter(orderitem__product=cheapest_product).values('id', 'user__username')
+        orders_with_cheapest_product = Order.objects.filter(orderproduct__product=cheapest_product).values('id', 'user__username')
 
         product_stock_status = Product.objects.annotate(
             stock_status=Case(
@@ -170,23 +164,31 @@ class OrderAnalysisView(APIView):
         ).values('id', 'name', 'stock', 'stock_status')
 
         multi_product_orders = Order.objects.annotate(
-            product_count=Count('orderitem')
+            product_count=Count('orderproduct')
         ).filter(product_count__gte=2).values('id', 'product_count')
 
         q_filtered_products = Product.objects.filter(
             Q(price__gt=100) | Q(stock__lt=10)
         ).values('id', 'name', 'price', 'stock')
 
-        recent_orders = Order.objects.filter(created_at__gte=now() - timedelta(days=30)).values('id', 'created_at')
+        recent_orders = Order.objects.filter(ordered_at__gte=now() - timedelta(days=30)).values('id', 'ordered_at')
 
-        orderitem_total = OrderItem.objects.annotate(
-            total=F('quantity') * F('product__price')
-        ).values('order_id').annotate(order_total=Sum('total'))
+        
+        order_totals = (
+            OrderProduct.objects
+            .values('order_id')
+            .annotate(order_total=Sum(F('quantity') * F('product__price')))
+        )
 
-        with_cte = With(orderitem_total, name="orderitem_total_cte")
-        with_cte_query = with_cte.join(Order, id=F('order_id')).annotate(
-            total_price=F('order_total')
-        ).values('id', 'total_price')
+        orders_with_total_price = (
+            Order.objects
+            .annotate(
+                total_price=Subquery(
+                    order_totals.filter(order_id=OuterRef('id')).values('order_total')[:1]
+                )
+            )
+            .values('id', 'total_price')
+        )
 
         table_name = Product._meta.db_table
         with connection.cursor() as cursor:
@@ -195,13 +197,13 @@ class OrderAnalysisView(APIView):
             avg_price_rawsql = avg_price_result[0] if avg_price_result else None
 
         orders_with_products = Order.objects.prefetch_related(
-            Prefetch('orderitem_set', queryset=OrderItem.objects.select_related('product'))
+            Prefetch('orderproduct_set', queryset=OrderProduct.objects.select_related('product'))
         )[:5]
 
         order_product_list = []
         for order in orders_with_products:
             items = []
-            for item in order.orderitem_set.all():
+            for item in order.orderproduct_set.all():
                 items.append({
                     'product_id': item.product.id,
                     'product_name': item.product.name,
@@ -226,7 +228,7 @@ class OrderAnalysisView(APIView):
             'multi_product_orders': list(multi_product_orders),
             'q_filtered_products': list(q_filtered_products),
             'recent_orders': list(recent_orders),
-            'cte_order_totals': list(with_cte_query),
+            'cte_order_totals': list(orders_with_total_price),
             'avg_price_rawsql': avg_price_rawsql,
             'orders_with_prefetched_products': order_product_list,
             'product_union': list(product_union),
