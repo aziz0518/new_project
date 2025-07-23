@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     # Custom apps
     'api',
     'users',
+    'order',
 
     # Third-party apps
     'rest_framework',
